@@ -91,7 +91,7 @@ class SyntheticGenerator:
             Main function to generate the texts
         """
         # Start generating endlessly
-        while True:
+        for _ in range(500):
             print("Start generating...")
             start = time.time()
 
@@ -112,7 +112,7 @@ class SyntheticGenerator:
             self.generated_count += 1
             print(f"Time passed: {time.time() - start}")
             self.log(prompt, reply_content)
-            break
+            time.sleep(np.random.randint(5, 50))
 
     def log(self, prompt: str, text: str):
         print(f"Generated: {self.generated_count}")
