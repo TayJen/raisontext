@@ -27,7 +27,7 @@ class TfIdfLogReg(Model):
         self.model = m
 
     def predict(self, texts: List[str]) -> List[float]:
-        return self.model.predict(texts)
+        return self.model.predict_proba(texts)[:, 1]
 
     def save(self, destination: Path):
         dir_path = destination / f'TfIdfLogReg_{self.descr}'
