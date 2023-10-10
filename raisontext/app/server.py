@@ -1,8 +1,11 @@
 import pickle
+from pathlib import Path
 
 from flask import Flask, request, jsonify
 from flasgger import Swagger, swag_from
-
+import sys
+sys.path.append(Path().resolve().absolute())
+print(sys.path)
 from raisontext import config
 
 app = Flask(__name__)
@@ -34,7 +37,7 @@ swagger = Swagger(app)
 })
 def predict():
     """Endpoint that returns predicted probabilities of whether a text was generated with LLM"""
-    texts = request.json.get('texts', [])
+    texts = request.args.get('texts', [])
 
     MODELS_DIR = config.REPO_ROOT / 'models'
     model_dir = MODELS_DIR / 'TfIdfLogReg_first silly baseline'
