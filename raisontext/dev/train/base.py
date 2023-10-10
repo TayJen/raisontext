@@ -1,18 +1,19 @@
+import uuid
 from typing import List
 from abc import ABC, abstractmethod
 
 
 class Model(ABC):
-    def __init__(self, path):
-        self.path = path
-        self.load()
+    def __init__(self, descr):
+        self.descr = descr
+        self.hash = uuid.uuid4()
 
     @abstractmethod
     def __str__(self):
         raise NotImplementedError
 
     @abstractmethod
-    def load(self):
+    def save(self, destination):
         raise NotImplementedError
 
     @abstractmethod
