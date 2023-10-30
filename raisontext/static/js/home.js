@@ -4,25 +4,26 @@ const answerLbl = $("#answer-label");
 
 
 classifyBtn.click(() => {
-    let text = textInput.value;
+    console.log('eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee');
+    let text = textInput.val();
     console.log(text);
 
     $.ajax({
         url: 'http://127.0.0.1:8000/classify',
         data: JSON.stringify({'text': text}),
         method: 'post',
-        processData: false,
-        contentType: false,
+        contentType: "application/json",
+        dataType: 'json',
         success: (result) => {
             console.log(result);
-            statusUpload = result.status
+            statusUpload = result.status;
             if (statusUpload === 'null') {
                 alert("Текст не может быть пустым");
             }
             else {
-                img.attr("src", `/static/images/${result.filename}`);
-                filename = result.filename;
-                imgPath = result.path;
+                answerLbl.empty();
+                console.log(result.prediction)
+                answerLbl.append(result.prediction);
             }
         },
         error: function(xhr, status, error) {
