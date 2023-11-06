@@ -64,5 +64,5 @@ async def classify(payload: ClassifyText = None) -> Dict[str, str]:
 
     return {
         'status': status,
-        'result': str(prediction)
+        'prediction': str(prediction)
     }

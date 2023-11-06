@@ -17,12 +17,13 @@ classifyBtn.click(() => {
         success: (result) => {
             console.log(result);
             statusUpload = result.status;
+            console.log(statusUpload);
             if (statusUpload === 'null') {
                 alert("Текст не может быть пустым");
             }
             else {
                 answerLbl.empty();
-                console.log(result.prediction)
+                console.log(result.prediction);
                 answerLbl.append(result.prediction);
             }
         },
