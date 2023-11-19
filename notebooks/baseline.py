@@ -24,27 +24,24 @@ from raisontext import config
 from raisontext.dev.train.tf_idf_log_reg import TfIdfLogReg
 # -
 
-DATA_DIR = config.REPO_ROOT / 'data'
-MODELS_DIR = config.REPO_ROOT / 'models'
+import wandb
+wandb.login()
+
+DATA_DIR = config.REPO_ROOT.parent / 'data'
+MODELS_DIR = config.REPO_ROOT.parent / 'models'
 
 train_df = pd.read_parquet(DATA_DIR / 'mgt_dataset_train.parquet')
 test_df = pd.read_parquet(DATA_DIR / 'mgt_dataset_test.parquet')
 
-baseline_m = TfIdfLogReg('first silly baseline')
-baseline_m.fit(train_df)
+train_df.head()
 
-baseline_m.predict(test_df.head(5)['text'].to_list())
+baseline_m = TfIdfLogReg('first silly baseline')
+baseline_m.fit(train_df.sample(1000))
 
 baseline_m.save(MODELS_DIR)
 
 baseline_m.hash
 
-test_pred_probas = baseline_m.predict(test_df['text'].to_list())
-
-# +
-from raisontext.dev.evaluate.metrics import classification_evaluation
-
-classification_evaluation(test_pred_probas, test_df['is_generated'].to_list())
-# -
+baseline_m.evaluate(test_df.head(100)['text'].to_list(), test_df.head(100)['is_generated'].to_list())
 
 
