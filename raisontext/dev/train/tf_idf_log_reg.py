@@ -7,14 +7,26 @@ from sklearn.linear_model import LogisticRegression
 from sklearn.feature_extraction.text import TfidfVectorizer
 from pathlib import Path
 import logging
+import wandb
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
 
 class TfIdfLogReg(Model):
+    def __init__(self, descr: str, wandb_log=True, run_name: str = ''):
+        super().__init__(descr=descr, wandb_log=wandb_log, run_name=run_name)
+        if self.wandb:
+            wandb.config.update({'model': 'TfIdfLogReg',
+                                 'descr': self.descr,
+                                 'hash': self.hash,
+                                 'hyperparams': {'ngram_range': (1, 2), 'min_df': 5, 'max_features': 2**21},
+                                 })
+        self.model = None
     def __str__(self):
         "Baseline Tf-Idf Log Reg"
 
     def fit(self, train_df):
+        if self.wandb:
+            wandb.log({'train_size': len(train_df)})
         train_train_X = train_df['text']
         train_train_Y = train_df["is_generated"]
 
@@ -25,6 +37,8 @@ class TfIdfLogReg(Model):
         m.fit(train_train_X, train_train_Y)
 
         self.model = m
+        if self.wandb:
+            self.wandb_run.finish()
 
     def predict(self, texts: List[str]) -> List[float]:
         return self.model.predict_proba(texts)[:, 1]
