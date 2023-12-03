@@ -2,8 +2,10 @@ import os
 import time
 
 import pika
+import json
 
 from enums import Classifier
+from dotenv import load_dotenv
 
 
 class RaisonText:
@@ -12,6 +14,7 @@ class RaisonText:
 
     def evaluate_quality(self, text: str, classifier: Classifier = None) -> float:
         if classifier == Classifier.NaiveClassifier or classifier is None:
+            time.sleep(5)
             if len(text) > 10:
                 score = 1
             elif len(text) > 5:
@@ -25,9 +28,9 @@ class RaisonText:
 
 if __name__ == "__main__":
     evaluator = RaisonText()
+    load_dotenv()
 
-    # url = os.environ.get('CLOUDAMQP_URL', 'amqp://guest:guest@localhost:5672/%2f')
-    url = "amqps://efiosdwv:5Mg1vBx3EbTu9RB4mRpj7xEOZh5XKXoz@cow.rmq2.cloudamqp.com/efiosdwv"
+    url = os.environ.get("RABBIT_MQ_URL")
     params = pika.URLParameters(url)
     connection = pika.BlockingConnection(params)
     channel_request = connection.channel()  # start a channel
@@ -37,13 +40,21 @@ if __name__ == "__main__":
     channel_answer.queue_declare(queue="raisontext_answer", durable=True)  # Declare a queue
 
     def callback(ch, method, properties, body):
-        print("[x] Received " + str(body))
-        answer = evaluator.evaluate_quality(body)
+        dict_message = json.loads(body)
+        id_ = dict_message['id']
+        text = dict_message['text']
+        print(f"[x] Received {id_} with {text}")
+
+        answer = evaluator.evaluate_quality(text)
+        answer_dict = {
+            "id": id_,
+            "answer": str(answer)
+        }
 
         channel_answer.basic_publish(
             exchange='',
             routing_key='raisontext_answer',
-            body=str(answer)
+            body=json.dumps(answer_dict)
         )
 
     channel_request.basic_consume('raisontext_model', callback, auto_ack=True)

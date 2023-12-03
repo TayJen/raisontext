@@ -1,3 +1,4 @@
+import os
 import uuid
 import pika
 from aio_pika import connect_robust
@@ -6,11 +7,11 @@ import json
 
 class PikaClient:
     def __init__(self, process_callable, publish_queue_name, consume_queue_name):
-        self.publish_queue_name = publish_queue_name  # "raisontext_model"
-        self.consume_queue_name = consume_queue_name  # "raisontext_answer"
+        self.publish_queue_name = publish_queue_name
+        self.consume_queue_name = consume_queue_name
 
         self.connection = pika.BlockingConnection(
-            pika.URLParameters("amqps://efiosdwv:5Mg1vBx3EbTu9RB4mRpj7xEOZh5XKXoz@cow.rmq2.cloudamqp.com/efiosdwv")
+            pika.URLParameters(os.environ.get("RABBIT_MQ_URL"))
         )
         self.channel = self.connection.channel()
         self.publish_queue = self.channel.queue_declare(queue=publish_queue_name, durable=True)
@@ -25,8 +26,7 @@ class PikaClient:
     async def consume(self, loop):
         """Setup message listener with the current running loop"""
         connection = await connect_robust(
-            # host="amqps://efiosdwv:5Mg1vBx3EbTu9RB4mRpj7xEOZh5XKXoz@cow.rmq2.cloudamqp.com/efiosdwv",
-            "amqps://efiosdwv:5Mg1vBx3EbTu9RB4mRpj7xEOZh5XKXoz@cow.rmq2.cloudamqp.com/efiosdwv",
+            os.environ.get("RABBIT_MQ_URL"),
             loop=loop
         )
 
@@ -41,7 +41,7 @@ class PikaClient:
         body = message.body
         print('Received message')
         if body:
-            self.process_callable(json.loads(body))
+            await self.process_callable(json.loads(body))
 
     def send_message(self, message: dict):
         """Method to publish message to RabbitMQ"""
