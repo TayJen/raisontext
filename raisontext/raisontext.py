@@ -1,10 +1,8 @@
 import os
 import time
-import pika
-import json
-import asyncio
 
-from pika_client import PikaClient
+import pika
+
 from enums import Classifier
 
 
@@ -25,62 +23,31 @@ class RaisonText:
         return score
 
 
-class ModelPikaClient(PikaClient):
+if __name__ == "__main__":
+    evaluator = RaisonText()
 
-    def __init__(self, publish_queue_name, consume_queue_name):
-        self.publish_queue_name = publish_queue_name  # "raisontext_model"
-        self.consume_queue_name = consume_queue_name  # "raisontext_answer"
-        self.evaluator = RaisonText()
+    # url = os.environ.get('CLOUDAMQP_URL', 'amqp://guest:guest@localhost:5672/%2f')
+    url = "amqps://efiosdwv:5Mg1vBx3EbTu9RB4mRpj7xEOZh5XKXoz@cow.rmq2.cloudamqp.com/efiosdwv"
+    params = pika.URLParameters(url)
+    connection = pika.BlockingConnection(params)
+    channel_request = connection.channel()  # start a channel
+    channel_request.queue_declare(queue='raisontext_model', durable=True)  # Declare a queue
 
-        self.connection = pika.BlockingConnection(
-            pika.URLParameters("amqps://efiosdwv:5Mg1vBx3EbTu9RB4mRpj7xEOZh5XKXoz@cow.rmq2.cloudamqp.com/efiosdwv")
-        )
-        self.channel = self.connection.channel()
-        self.publish_queue = self.channel.queue_declare(queue=publish_queue_name, durable=True)
-        self.consume_queue = self.channel.queue_declare(queue=consume_queue_name, durable=True)
+    channel_answer = connection.channel()  # start a channel
+    channel_answer.queue_declare(queue="raisontext_answer", durable=True)  # Declare a queue
 
-        self.publish_callback_queue = self.publish_queue.method.queue
-        self.consume_callback_queue = self.consume_queue.method.queue
+    def callback(ch, method, properties, body):
+        print("[x] Received " + str(body))
+        answer = evaluator.evaluate_quality(body)
 
-        self.response = None
-
-    def process_callable(self, message: dict):
-        print(f"In model {message}")
-        text = message['text']
-        print(f"In model text: {text}")
-        prediction = self.evaluator.evaluate_quality(text)
-
-        self.send_message(
-            {
-                "answer": str(prediction)
-            }
+        channel_answer.basic_publish(
+            exchange='',
+            routing_key='raisontext_answer',
+            body=str(answer)
         )
 
-    async def process_incoming_message(self, message):
-        """Processing incoming message from RabbitMQ"""
-        await message.ack()
-        body = message.body
-        print('Received message')
-        if body:
-            self.process_callable(self, json.loads(body))
+    channel_request.basic_consume('raisontext_model', callback, auto_ack=True)
 
-
-async def startup(pika_client):
-    loop = asyncio.get_running_loop()
-    task = loop.create_task(pika_client.consume(loop))
-    await task
-
-
-async def main():
-    model_pika_client = ModelPikaClient(
-        publish_queue_name="raisontext_answer",
-        consume_queue_name="raisontext_model"
-    )
-
-    await startup(model_pika_client)
-
-
-main()
-while True:
-    print("Model pika client")
-    time.sleep(1)
+    print(' [*] Waiting for messages. To exit press CTRL+C')
+    channel_request.start_consuming()
+    connection.close()

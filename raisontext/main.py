@@ -31,7 +31,7 @@ app.add_middleware(
 
 
 def print_function(message: dict):
-    print('Here we got incoming message %s', message)
+    print(f'Here we got incoming message {message}')
 
 
 pika_client = PikaClient(
