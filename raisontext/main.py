@@ -1,22 +1,28 @@
-import aiofiles
+import asyncio
 import pickle
 import os
 from pathlib import Path
-
 from typing import Dict
+from base64 import b64encode
 
-from fastapi import FastAPI
+
+from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from starlette.responses import FileResponse
+from dotenv import load_dotenv
 
-import config
-from raisontext import RaisonText
-from enums import Classifier
+
+from websocket_connection import ConnectionManager
+from pika_client import PikaClient
 
 
 app = FastAPI()
+manager = ConnectionManager()
+id_to_socket_dict = {}
+load_dotenv()  # take environment variables from .env.
+
 app.mount("/static", StaticFiles(directory="static"), name="static")
 
 app.add_middleware(
@@ -28,41 +34,63 @@ app.add_middleware(
 )
 
 
+async def receive_prediction(message: dict):
+    text = message['answer']
+    id_ = message["id"]
+
+    print(f'Here we got incoming message from {id_}: {text}')
+    websocket = id_to_socket_dict.get(id_, None)
+    if websocket is not None:
+        await manager.send_personal_message(text, websocket)
+
+
+pika_client = PikaClient(
+    receive_prediction,
+    publish_queue_name="raisontext_model",
+    consume_queue_name="raisontext_answer"
+)
+
 
 class ClassifyText(BaseModel):
     text: str = ""
+
+
+@app.on_event("startup")
+async def startup():
+    loop = asyncio.get_running_loop()
+    task = loop.create_task(pika_client.consume(loop))
+    await task
 
 
 @app.get("/")
 async def home():
     return FileResponse('static/html/home.html')
 
-@app.post("/classify")
-async def classify(payload: ClassifyText = None) -> Dict[str, str]:
-    """
-        Function for text classification
-    """
-    text = payload.text
-    print(text)
 
-    if text:
-        evaluator = RaisonText()
+@app.websocket("/classify")
+async def websocket_endpoint(websocket: WebSocket):
+    await manager.connect(websocket)
+    id_ = b64encode(os.urandom(8)).decode('ascii')
+    id_to_socket_dict[id_] = websocket
+    try:
+        while True:
+            text = await websocket.receive_text()
+            print(text)
 
-        # MODELS_DIR = os.path.join(config.REPO_ROOT, 'models')
-        # model_dir = MODELS_DIR / 'TfIdfLogReg_first silly baseline'
-        # model_name = '4a015324-601a-43d3-9df9-856323b97f0d.pkl'
-        # with open(model_dir / model_name, 'rb') as f:
-        #     model = pickle.load(f)
+            if text:
+                pika_client.send_message(
+                    {
+                        "id": id_,
+                        "text": text
+                    }
+                )
 
-        prediction = evaluator.evaluate_quality(text, Classifier.NaiveClassifier)
-        status = 'OK'
-    else:
-        prediction = None
-        status = 'null'
+                print(f"[x] Sent {id_} with {text}")
+            else:
+                print("[x] Didn't send, no text :(")
 
-    print(prediction)
+    except WebSocketDisconnect:
+        del id_to_socket_dict[id_]
 
-    return {
-        'status': status,
-        'prediction': str(prediction)
-    }
+        manager.disconnect(websocket)
+        await manager.send_personal_message("Bye!!!", websocket)

@@ -27,6 +27,30 @@ Dataset may be downloaded [here](https://drive.google.com/file/d/1PQxFbcEoH7Md7S
 
 Part of generated data publiched on [HuggingFace](https://huggingface.co/datasets/yatsy/GPT-wiki-intro-extension).
 
+## How to run
+
+In general the model and the backend are two independent instances, where each of them runs independently. They only interact through RabbitMQ queues.
+
+```
+pip install -r requirements.txt
+cd raisontext
+```
+
+### Backend
+The server part sends user requests to the queue and listens to the model's queue, so when a forecast is made for a particular user, it transmits it to the frontend.
+
+```
+uvicorn main:app
+```
+
+### Model
+The model listens to the backend queue, makes a prediction, and then sends it to the model's queue.
+
+```
+python raisontext.py
+```
+
+
 ## Prediction baseline
 
 We reached 0.96 roc_auc score with baseline [model](https://drive.google.com/file/d/16_QvtMvPr8CtetFDoFIVIYz7alw520ZQ/view?usp=sharing). Exract archive into repo root folder.
