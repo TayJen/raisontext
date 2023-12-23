@@ -1,23 +1,17 @@
 import os
+import sys
 import time
-
-import pika
+import pickle
 import json
 
-import config
-from dev.train.tf_idf_log_reg import TfIdfLogReg
+import pika
+import sklearn
 from dotenv import load_dotenv
 
-import sys
-
-sys.path.append('../../..')
 
 if __name__ == "__main__":
-    # evaluator = RaisonText()
-    evaluator = TfIdfLogReg('Raisontext Logreg', wandb_log=False)
-    weights_path = os.path.join(config.REPO_ROOT.parent, 'models', 'TfIdfLogReg_first silly baseline', '0c581279-c7e0-4317-9cb2-dbc0408d0b4f.pkl')
-    evaluator.load(weights_path)
-    assert False
+    evaluator = pickle.load(open("./models/TfIdfLogReg_first silly baseline/0c581279-c7e0-4317-9cb2-dbc0408d0b4f.pkl", 'rb'))
+    print("Model is loaded")
 
     load_dotenv()
 
@@ -36,10 +30,10 @@ if __name__ == "__main__":
         text = dict_message['text']
         print(f"[x] Received {id_} with {text}")
 
-        answer = evaluator.evaluate_quality(text)
+        answer = evaluator.predict([text])
         answer_dict = {
             "id": id_,
-            "answer": str(answer)
+            "answer": str(round(answer[0], 3))
         }
 
         channel_answer.basic_publish(
