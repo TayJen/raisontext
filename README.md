@@ -37,6 +37,7 @@ cd raisontext
 ```
 
 ### Backend
+
 The server part sends user requests to the queue and listens to the model's queue, so when a forecast is made for a particular user, it transmits it to the frontend.
 
 ```
@@ -44,13 +45,17 @@ uvicorn main:app
 ```
 
 ### Model
+
 The model listens to the backend queue, makes a prediction, and then sends it to the model's queue.
 
 ```
-python raisontext.py
+python logreg_baseline.py
 ```
 
+### Model weights
 
-## Prediction baseline
+Model weights could be found on Google Drive by this [link](https://drive.google.com/file/d/16_QvtMvPr8CtetFDoFIVIYz7alw520ZQ/view)
 
-We reached 0.96 roc_auc score with baseline [model](https://drive.google.com/file/d/16_QvtMvPr8CtetFDoFIVIYz7alw520ZQ/view?usp=sharing). Exract archive into repo root folder.
+### Prediction baseline
+
+We reached 0.96 roc_auc score with baseline [model](https://drive.google.com/file/d/16_QvtMvPr8CtetFDoFIVIYz7alw520ZQ/view?usp=sharing). Exract archive into repo root folder *models*.
